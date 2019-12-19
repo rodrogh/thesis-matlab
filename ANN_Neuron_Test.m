@@ -6,8 +6,6 @@ function ANN_Neuron_Test(fname,trainFcn,activationFcn,functionality)
 close all;
 clc;
 
-%This is a test
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Initialization
 load('../Experimental work/FormattedTrainingSetInd.mat');
