@@ -1,7 +1,7 @@
 %Script to observe the impact of increasing the number of nuerons on a
 %feedforward ANN. The matlab tables with the formatted datsets must be
 %loaded
-function ANN_Neuron_Test(fname,trainFcn,activationFcn)
+function ANN_Neuron_Test(fname,trainFcn,activationFcn,functionality)
 % clear all;
 close all;
 clc;
@@ -19,7 +19,6 @@ T = 25; %Maximum number of neurons to test
 saveData = true;
 %Choose between: 'single training' 'multi training' 'getPrediction' 'plots'
 %'getError'
-functionality = 'single trainingV2';
 %If Analysis is desired, shoose input type: 'unknown' 'known'
 inputType = 'known';
 %Neural network predictions take too much time to compute, if only
