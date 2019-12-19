@@ -45,15 +45,23 @@ for i=1:A %Number of files
            figure(fig_performance{k});
            %Performance of network per neuron combination
            T = length( NNs.(fields.N{j}).(fields.M{k}) ); %Total nuerons tested
-           perf = 0.*T;
+           neuronsNr = 1:T;
+           best_perf = 0.*T;
+           best_vperf = 0.*T;
+           best_tperf = 0.*T;
            for L=1:T
-            perf(L) = NNs.(fields.N{j}).(fields.M{k})(L).performance.best_perf;
+            best_perf(L) = NNs.(fields.N{j}).(fields.M{k})(L).performance.best_perf;
+            best_vperf(L) = NNs.(fields.N{j}).(fields.M{k})(L).performance.best_vperf;
+            best_tperf(L) = NNs.(fields.N{j}).(fields.M{k})(L).performance.best_tperf;            
            end           
-           subplot(2,3,i);
-           semilogy(1:length(perf),perf);
+           subplot(2,3,i);           
+           semilogy(neuronsNr,best_tperf,...
+                neuronsNr,best_vperf,...         
+                neuronsNr,best_perf);
            title(strcat("Method: ", file_names{i} ));
            ylabel("MSE");
            xlabel("Number of Neurons");
+           legend('Training','Validation','Testing');
            grid on;
            grid minor;           
            %% Calculate and plot the Normalized Mean Absolute Difference (NMAD)

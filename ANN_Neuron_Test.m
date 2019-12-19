@@ -487,8 +487,7 @@ switch functionality
             save(file_name,'predictions');
         end
         %%
-    case 'getPerformance'
-        %Prediction data
+    case 'getError'
         pfile = 'KnownDisR.mat';
         load( strcat('Prediction_',pfile) );
         %Raw data
