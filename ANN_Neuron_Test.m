@@ -8,7 +8,7 @@ clc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Initialization
-load('FormattedTrainingSetInd.mat');
+load('../Experimental work/FormattedTrainingSetInd.mat');
 %Defining number of materials
 N = length( fieldnames(trainData) ); %Value of N is valid for all cases
 %Materials NAMES: {'EPR';'FR';'NatR';'NR';'PR';'SR'}
@@ -94,7 +94,7 @@ switch functionality
     case 'single trainingV2'
         disp( 'Test Stage: START of Single Layer Analysis V4' );
         %Initialization
-        load('FormattedTrainingSetIndV4.mat');
+        load('../Experimental work/FormattedTrainingSetIndV4.mat');
         %Defining number of materials
         N = length( fieldnames(trainData) ); %Value of N is valid for all cases
         %Materials NAMES: {'EPR';'FR';'NatR';'NR';'PR';'SR'}
@@ -194,7 +194,7 @@ switch functionality
         if saveData
             disp('Saving Data Single...')
             %             save('NN_BestV3NatR.mat','nn_best_single');
-            fileName = strcat(fname,'.mat');
+            fileName = strcat('../Experimental work',fname,'.mat');
             save(fileName,'neuralnets');
         end
     case 'multi training'
