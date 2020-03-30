@@ -131,7 +131,7 @@ for i=1:A %Number of files
             yyaxis left
             semilogy(neuronsNr,best_perf,neuronsNr,u_perf);
             ylabel("Mean Squared Error (MSE)");
-            ylim([10e-6 10]);
+            ylim([mean(best_perf)/10, mean(best_perf)*10]);
             %R2 Right
             yyaxis right
             if contains( file_names{i}, 'Bayesian')
@@ -144,7 +144,7 @@ for i=1:A %Number of files
                 'Training','Validation','Testing','Location','best'); %Right
             end
             ylabel("Coefficient of Determination (R^2)");
-            ylim([0 1]);
+            ylim([mean(train_R2)-0.1, mean(train_R2)+0.1]);
             title(strcat("Method: ", file_names(i) ));
             xlabel("Number of Neurons");
             grid on;

@@ -14,10 +14,10 @@ PmatData = compileLoad(matData,test_to_compile);
 PmatData = resizeRubberBandsData(PmatData);
 switch test_to_compile
     case 'Tensile Strength'
-        fileName = strcat("TrainingSetProc",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProc",dataVersion,".mat" );
         save(fileName,'PmatData');
     case 'Stress Relaxation'
-        fileName = strcat("SRelSetProc",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/SRelSetProc",dataVersion,".mat" );
         save(fileName,'PmatData');
 end
 disp(strcat(test_to_compile," Data Saved"));
@@ -28,10 +28,10 @@ PmatData = compileLoadforNN(matData,test_to_compile);
 PmatData = resizeRubberBandsData(PmatData);
 switch test_to_compile
     case 'Tensile Strength'
-        fileName = strcat("TrainingSetProcInd",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProcInd",dataVersion,".mat" );
         save(fileName,'PmatData');
     case 'Stress Relaxation'
-        fileName = strcat("SRelSetProcInd",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/SRelSetProcInd",dataVersion,".mat" );
         save(fileName,'PmatData');
 end
 disp(strcat(test_to_compile," Data Saved"));
@@ -45,9 +45,11 @@ fields.N = fieldnames(matData);
 %Function definition
 %[pload, rload, rdis, rtime] = readInstronTable(N,iRow,iCol,paths,test)
 for i=1:N
+    disp(fields.N{i});
     M = length( fieldnames(matData. ( fields.N{i} ) ) );
     fields.M = fieldnames(matData.(fields.N{i}));
     for j=1:M
+        disp(fields.M{j})
         P = length( matData.(fields.N{i}).(fields.M{j}).paths );
         %Slightly modify matData layout to include pload, rload, rdis, rtime
         %outputs of the readInstronTable
@@ -135,84 +137,93 @@ for i=1:N
     fields.M = fieldnames(matData.(fields.N{i}));
     for j=1:M
         P = length( matData.(fields.N{i}).(fields.M{j}) );
-        for k=1:P
-            %Extract material thickness
-            thickness = matData.(fields.N{i}).(fields.M{j})(k).stats.thickness;
-            
-            PmatData.(fields.N{i}).(fields.M{j})(k).rstress = ...
-                matData.(fields.N{i}).(fields.M{j})(k).rload / ...
-                (specimenWidth*thickness*1e-6); %Pascals
-            PmatData.(fields.N{i}).(fields.M{j})(k).pstress = ...
-                matData.(fields.N{i}).(fields.M{j})(k).pload / ...
-                (specimenWidth*thickness*1e-6); %Pascals
-            PmatData.(fields.N{i}).(fields.M{j})(k).sstress = ...
-                matData.(fields.N{i}).(fields.M{j})(k).sload / ...
-                (specimenWidth*thickness*1e-6); %Pascals
-            
-            PmatData.(fields.N{i}).(fields.M{j})(k).rstrain = ...
-                matData.(fields.N{i}).(fields.M{j})(k).rdis / specimenLength; %Not Percentage
-            PmatData.(fields.N{i}).(fields.M{j})(k).pstrain = ...
-                matData.(fields.N{i}).(fields.M{j})(k).pdis / specimenLength; %Not Percentage
-            
-            u1(k) = length(PmatData.(fields.N{i}).(fields.M{j})(k).rstress);
-            u2(k) = length(PmatData.(fields.N{i}).(fields.M{j})(k).pstress);
-            u3(k) = length(PmatData.(fields.N{i}).(fields.M{j})(k).sstress);
-        end
         %% IMPORTANT: LOAD AND DISPLACEMENT DATA FOR RUBBER BANDS IN THIS
         %% FORMAT ARE NOT RELEVANT. ONLY THE STRESS DATA IS BECAUSE IT TAKES
         %% INTO ACCOUNT THE MATERIALS DIMENSIONS
-        if P > 1 %Only when there are more than one tests, get the average
-            for k=1:P
-                range1 = round(linspace(1,u1(k),min(u1)));
-                range2 = round(linspace(1,u2(k),min(u2)));
-                range3 = round(linspace(1,u3(k),min(u3)));
-                temp_rstress(k,:) = ...
-                    PmatData.(fields.N{i}).(fields.M{j})(k).rstress(range1);
-                temp_pstress(k,:) = ...
-                    PmatData.(fields.N{i}).(fields.M{j})(k).pstress(range2);
-                temp_sstress(k,:)  = ...
-                    PmatData.(fields.N{i}).(fields.M{j})(k).sstress(range3);
-                
-                temp_rstrain(k,:) = ...
-                    PmatData.(fields.N{i}).(fields.M{j})(k).rstrain(range1);
-                temp_pstrain(k,:) = ...
-                    PmatData.(fields.N{i}).(fields.M{j})(k).pstrain(range2);
-            end
-            %Store Averaged Stress values of all tests in all variables of
-            %the structure to retain consistency (duplicating)
-            for k=1:P
-                PmatData.(fields.N{i}).(fields.M{j})(k).mrstress = ...
-                    mean( temp_rstress,1);
-                PmatData.(fields.N{i}).(fields.M{j})(k).mpstress = ...
-                    mean( temp_pstress,1);
-                PmatData.(fields.N{i}).(fields.M{j})(k).msstress = ...
-                    mean( temp_sstress,1);
-                
-                PmatData.(fields.N{i}).(fields.M{j})(k).mrstrain = ...
-                    mean( temp_rstrain,1);
-                PmatData.(fields.N{i}).(fields.M{j})(k).mpstrain = ...
-                    mean( temp_pstrain,1);
-            end
-        else
-            PmatData.(fields.N{i}).(fields.M{j}).mrstress = ...
-                PmatData.(fields.N{i}).(fields.M{j}).rstress;
-            PmatData.(fields.N{i}).(fields.M{j}).mpstress = ...
-                PmatData.(fields.N{i}).(fields.M{j}).pstress;
-            PmatData.(fields.N{i}).(fields.M{j}).msstress = ...
-                PmatData.(fields.N{i}).(fields.M{j}).sstress;
-            PmatData.(fields.N{i}).(fields.M{j}).mrstrain = ...
-                PmatData.(fields.N{i}).(fields.M{j}).rstrain;
-            PmatData.(fields.N{i}).(fields.M{j}).mpstrain = ...
-                PmatData.(fields.N{i}).(fields.M{j}).pstrain;
+        %Test from different rubber bands have different lengths,
+        %find them
+        for k=1:P
+            u1(k) = length(matData.(fields.N{i}).(fields.M{j})(k).rload);
+            u2(k) = length(matData.(fields.N{i}).(fields.M{j})(k).pload);
+            u3(k) = length(matData.(fields.N{i}).(fields.M{j})(k).sload);
         end
+        %Sample the same data from each test, based on the smallest
+        %test
+        for k=1:P
+            range1 = round(linspace(1,u1(k),min(u1)));
+            range2 = round(linspace(1,u2(k),min(u2)));
+            range3 = round(linspace(1,u3(k),min(u3)));
+            % Placeholder to improve readability of code
+            thickness = matData.(fields.N{i}).(fields.M{j})(k).stats.thickness;
+            crossArea = (specimenWidth*thickness*1e-6);
+            % Compile data and calculate stress
+            temp_rstress(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).rload(range1)...
+                /crossArea;
+            temp_rstrain(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).rdis(range1)...
+                / specimenLength;
+            temp_rtime(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).rtime(range1);
+            temp_pstress(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).pload(range2)...
+                /crossArea;
+            temp_pstrain(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).pdis(range2)...
+                / specimenLength;
+            temp_ptime(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).ptime(range2);
+            temp_sstress(k,:) = ...
+                matData.(fields.N{i}).(fields.M{j})(k).sload(range3)...
+                /crossArea;
+            % Extra parameters
+            temp_eng_stress = matData.(fields.N{i}).(fields.M{j})(k).stats.medLoad...
+                /crossArea;
+            temp_eng_strain = matData.(fields.N{i}).(fields.M{j})(k).stats.medDis...
+                /specimenLength;
+            temp_eng_stress_end = matData.(fields.N{i}).(fields.M{j})(k).stats.minLoad...
+                /crossArea;
+        end
+        PmatData.(fields.N{i}).(fields.M{j}) = [];
+        %Store Averaged Stress values of all tests in all variables of
+        %the structure to retain consistency (duplicating)
+        PmatData.(fields.N{i}).(fields.M{j}).rstress = ...
+            mean( temp_rstress,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).pstress = ...
+            mean( temp_pstress,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).sstress  = ...
+            mean( temp_sstress,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).rstrain = ...
+            mean( temp_rstrain,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).pstrain = ...
+            mean( temp_pstrain,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).rtime = ...
+            mean( temp_rtime,1  );
+        PmatData.(fields.N{i}).(fields.M{j}).ptime = ...
+            mean( temp_ptime,1  );
+        %Depending on the test, this value has two different meanings
+        %Tensile Strength - Engineering Stress and Strain
+        %Stress Relaxation - Initial Stress (median)
+        PmatData.(fields.N{i}).(fields.M{j}).eng_stress = ...
+            mean( temp_eng_stress, 1 );
+        PmatData.(fields.N{i}).(fields.M{j}).eng_strain = ...
+            mean( temp_eng_strain, 1 );        
+        %Stress Relaxation - Stress at the end of the test (median)
+        PmatData.(fields.N{i}).(fields.M{j}).eng_stress_end = ...
+            mean( temp_eng_stress_end, 1 );
+        
+        clear temp_rstress temp_rstrain ...
+            temp_rtime temp_ptime ...
+            temp_pstress temp_pstrain temp_sstress ...
+            u1 u2 u3
     end
 end
 switch test_to_compile
     case 'Tensile Strength'
-        fileName = strcat("TrainingSetProcStress",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProcTrainingSetProcStress",dataVersion,".mat" );
         save(fileName,'PmatData');
     case 'Stress Relaxation'
-        fileName = strcat("SRelSetProcStress",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProcSRelSetProcStress",dataVersion,".mat" );
         save(fileName,'PmatData');
 end
 disp(strcat(test_to_compile," Data Saved"));
@@ -252,10 +263,10 @@ for i=1:N
 end
 switch test_to_compile
     case 'Tensile Strength'
-        fileName = strcat("TrainingSetProcStressInd",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProcTrainingSetProcStressInd",dataVersion,".mat" );
         save(fileName,'PmatData');
     case 'Stress Relaxation'
-        fileName = strcat("SRelSetProcStressInd",dataVersion,".mat" );
+        fileName = strcat("../Experimental Work/TrainingSetProcSRelSetProcStressInd",dataVersion,".mat" );
         save(fileName,'PmatData');
 end
 disp(strcat(test_to_compile," Data Saved"));
