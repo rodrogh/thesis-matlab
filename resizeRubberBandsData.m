@@ -25,13 +25,13 @@ for i=7:N
         P = length( PmatData. ( fields.N{i} ).( fields.M{j}) );
         for k=1:P
             switch (fields.M{j}) %disR50 disR250 disR500
-                case "disR50"
+                case {"disR50","L5min"}
                     testCount = test1;
                     test1 = test1 + 1;
-                case "disR250"
+                case {"disR250","L15min"}
                     testCount = test2;
                     test2 = test2 + 1;
-                case "disR500"
+                case {"disR500","L180min"}
                     testCount = test3;
                     test3 = test3 + 1;
             end            

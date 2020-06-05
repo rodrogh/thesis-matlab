@@ -17,15 +17,21 @@ clc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Font parameters for plotting
-lineSize = 3;
+lineSize = 2;
 fontSize = 18;
 font = 'Gill Sans MT';
 % The properties we've been using in the figures
 set(0,'defaultLineLineWidth',lineSize);   % set the default line width to lw
-set(0,'defaultAxesFontName',font);   % set the default line width to lw
-set(0,'defaultAxesFontSize',fontSize);   % set the default line width to lw
-set(0,'defaultTextFontName',font);   % set the default line width to lw
-set(0,'defaultTextFontSize',fontSize);   % set the default line width to lw
+%Plot visualization
+% Change default axes fonts.
+set(groot,'DefaultAxesFontName', 'Times New Roman')
+set(groot,'DefaultAxesFontSize', 12)
+% Change default text fonts.
+set(groot,'DefaultTextFontname', 'Times New Roman')
+set(groot,'DefaultTextFontSize', 12)
+% Extra
+set(groot, 'DefaultLegendLocation', 'best')
+set(groot, 'defaultLineLineWidth', 2)
 
 figStress = figure('Name','Stress Relaxation');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -78,9 +84,9 @@ expData = struct('data',{},'time',{},'strain',{},'stress',{},'YMtoe',{},'YM',{},
 %1 for neural network processing behaviour
 method = 0;
 if method == 0
-    load('SRelSetProc.mat');
+    load('../Experimental Work/TrainingSetProcSRelSetProcStressV4.mat');
 else
-    load('SRelSetProcInd.mat'); %This approach is probably unnecesary
+    load('../Experimental Work/SRelSetProcInd.mat'); %This approach is probably unnecesary
 end
 %Core variables initialization
 %Structure to save fitted data for the all the different
@@ -101,25 +107,27 @@ fields.P = fieldnames( PmatData.(fields.N{1}).(fields.M{1}) );
 k = zeros(N,6+1); %6 is the maximum number of branches
 eta = zeros(N,6);
 thao = zeros(N,6);
-Eo = zeros(N);
+Eo = zeros(N,1);
 %Create gof variable and fill it with nan to avoid zero values in the
 %min calculation
 gofSR = nan(N,20);
 
 for i=1:N
-    for j=3:3   %{'L5';'L15';'L180'}
+    fields.M = fieldnames( PmatData.(fields.N{i}) );
+    M = length(fields.M);
+    for j=1:M  %{'L5';'L15';'L180'}
         %Initialize structure to save fitted parameters
         fitParameters.( fields.N{i} ).( fields.M{j} ) = [];
         %Create more ergonomic variables for each parameter
-        load = PmatData.( fields.N{i} ).( fields.M{j} ). (fields.P{2});
-        dis = PmatData.( fields.N{i} ).( fields.M{j} ). (fields.P{4});
-        time = PmatData.( fields.N{i} ).( fields.M{j} ). (fields.P{5});
+        load = PmatData.( fields.N{i} ).( fields.M{j} ). sstress;
+        dis = PmatData.( fields.N{i} ).( fields.M{j} ). pstrain;
+        time = PmatData.( fields.N{i} ).( fields.M{j} ). ptime;
         %Experimental setup: Initial deformation
         Eo(i) = dis(end);
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %SLS model fit for sress relaxation:
-%         [kSLS(i,:), etaSLS(i,:), thaoSLS(i,:), EoSLS(i,:)] = SLSStressRel(load,Eo(i),time);
-        [kSLS(i,:), etaSLS(i,:), thaoSLS(i,:), EoSLS(i,:)] = optimizingSLS(load,Eo(i),time);
+        [kSLS(i,:), etaSLS(i,:), thaoSLS(i,:), EoSLS(i,:)] = SLSStressRel(load,Eo(i),time);
+%         [kSLS(i,:), etaSLS(i,:), thaoSLS(i,:), EoSLS(i,:)] = optimizingSLS(load,Eo(i),time);
         
         %Applying formula deducted from exponential decaying curve
         loadSLS = EoSLS(i)*(kSLS(i,1) + kSLS(i,2)*(1./exp(time./thaoSLS(i))));
@@ -141,53 +149,58 @@ for i=1:N
         %branches is desired, the for loop can be bipassed making it "for
         %branches=Branches(i):Branches(i)".
         %Branches(i) = parameters(i).branches;
-        Branches(i) = 1;
+        Branches(i) = 10;
         %branches = 1;
-        for branches=Branches(i):Branches(i)
-            %         %clear k eta thao Eo
-            %         [k(i,1:branches+1),eta(i,1:branches),thao(i,1:branches),Eo(i)] = wiechertStressRel(load,Eo(i),time,branches,parameters(i));
-            %         %Calculate fit and compare with actual value
-            %         %The contribution of all parallel branches is
-            %         stressBranch = zeros(branches,length(time));
-            %         stressSum = 0;
-            %         for j=1:branches
-            %             stressBranch(j,:) = k(i,j+1).*(1./exp(time/thao(i,j)));
-            %             stressSum = stressSum + stressBranch(j,:);
-            %         end
-            %         stressWiechert = Eo(i)*(k(i,1) + stressSum);
-            %         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %         %Compare mathematical model with experimental data and exponential fit
-            %         gofSR(i,branches) = 100*(1/mean(load))*sqrt(mean(power(load-stressWiechert',2)));
-            %         %optimal number of branches
-            %         [minSR,indexSR] = min(gofSR,[],2);
+        for branches=1:Branches(i)
+                    %clear k eta thao Eo
+                    [k(i,1:branches+1),eta(i,1:branches),thao(i,1:branches),Eo(i)] = wiechertStressRel(load,Eo(i),time,branches,1);
+                    %Calculate fit and compare with actual value
+                    %The contribution of all parallel branches is
+                    stressBranch = zeros(branches,length(time));
+                    stressSum = 0;
+                    for J=1:branches
+                        stressBranch(J,:) = k(i,J+1).*(1./exp(time/thao(i,J)));
+                        stressSum = stressSum + stressBranch(J,:);
+                    end
+                    stressWiechert = Eo(i)*(k(i,1) + stressSum);
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %Compare mathematical model with experimental data and exponential fit
+                    gofSR(i,branches) = 100*(1/mean(load))*sqrt(mean(power(load-stressWiechert,2)));
+                    %optimal number of branches
+                    [minSR,indexSR] = min(gofSR,[],2);
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %         figure(figStress)
-            figure
-            colors = get(gca,'ColorOrder');
-            %         subplot(2,3,i);
-            plot(time/60,load,'Color',colors(6,:));
-%             semilogx(time,load,'Color',colors(6,:));
-            hold on
-%             semilogx(time,loadSLS,':','Color',colors(4,:));
-            plot(time/60,loadSLS,':','Color',colors(4,:));
-%             plot(time/60,loadSLS2,'--','Color',colors(2,:));
-            %         plot(time/60,stressWiechert'*1e-6,'--','Color',colors(7,:));
-            %         plot(time/60,stressW2*1e-6);
-            hold off
-            %         legend('Data','SLS Fit','Wiechert Fit N','Wiechert Fit 2');
-            legend('Data','SLS Fit');
-            %         sTitle = strcat(parameters(i).name,'');
-            sTitle = strcat(fields.N{i},' - Stress Relaxation');
-            title(sTitle);
-            xlabel('Time (minutes)');
-            ylabel('Load (N)');
-            %grid on;
-            ax = gca; % current axes
-            ax.XMinorTick = 'on';
-            ax.YMinorTick = 'on';
-            ax.XMinorGrid = 'on';
-            ax.YMinorGrid = 'on';
-            ax.TickLength = [0.02 0.025];
+%             figure
+%             colors = get(gca,'ColorOrder');
+%             %         subplot(2,3,i);
+%             plot(time/60,load*1e-6,'Color',colors(6,:),...
+%                 'DisplayName','Experimental Data');
+% %             semilogx(time,load,'Color',colors(6,:));
+%             hold on
+% %             semilogx(time,loadSLS,':','Color',colors(4,:));
+%             plot(time/60,loadSLS*1e-6,':','Color',colors(4,:),...
+%                 'DisplayName','SLS Fit');
+% %             plot(time/60,loadSLS2,'--','Color',colors(2,:));
+%             plot(time/60,stressWiechert*1e-6,'--','Color',colors(7,:),...
+%                 'DisplayName','Wiechert Fit');
+%             %         plot(time/60,stressW2*1e-6);
+%             hold off
+%             %         legend('Data','SLS Fit','Wiechert Fit N','Wiechert Fit 2');
+%             legend('Location','northeast','Interpreter','latex');
+%             %             legend('Data','SLS Fit');
+%             %         sTitle = strcat(parameters(i).name,'');
+%             sTitle = strcat("Stress Relaxation Fit - ",fields.N{i});
+%             title(sTitle,'Interpreter','latex');
+%             xlabel('Time (minutes)');
+%             ylabel('Stress (MPa)');
+%             %grid on;
+%             ax = gca; % current axes
+%             ax.Box = 'off';
+%             ax.XMinorTick = 'on';
+%             ax.YMinorTick = 'on';
+%             ax.XGrid = 'on';
+%             ax.YGrid = 'on';
+%             ax.TickLength = [0.02 0.025];
 %             ax.XLim = [0 180];
             %ax.YLim = [0 1.1];
         end
@@ -197,18 +210,22 @@ for i=1:N
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.thao = thaoSLS(i);
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.eta = etaSLS(i);
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.Eo = Eo(i);
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.k = k(i,:);
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.thao = thao(i);
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.eta = eta(i);
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.Eo = Eo(i);
     end
 end
 
-%Save Wiechert model fit
+% Save Wiechert model fit
 % save('FitDataSRLow.mat','Branches','eta','k','thao','Eo','kSLS', 'etaSLS', 'thaoSLS', 'EoSLS',...
 %     'kW','etaW','thaoW','EoW','gofSR','indexSR','minSR');
 % save('FitRawDataSRLow.mat','Branches','eta','k','thao','Eo','kSLS', 'etaSLS', 'thaoSLS', 'EoSLS',...
 %     'kW','etaW','thaoW','EoW','gofSR','indexSR','minSR');
 if method == 0
-    save('SRelFitParameters.mat','fitParameters');
+    save('../Experimental Work/SRelFitParametersV4.mat','fitParameters');
 else
-    save('SRelFitParametersInd.mat','fitParameters');
+    save('../Experimental Work/SRelFitParametersIndV4.mat','fitParameters');
 end
 % save('readInstronDataSR.mat','expData');
 % save('readInstronRawDataSR.mat','expData');
@@ -274,7 +291,7 @@ k(1) = stress(1)/Eo - ke - sum(k(2:end));
 k = [ke ; k];
 %%%%%%%%%%%
 %Obtain viscous coefficients
-eta = thao.*k(2:end);
+eta = thao.*k(2:end)';
 %obtain the transpose of all variables to match calling function
 temp = k';
 clear k

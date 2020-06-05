@@ -7,7 +7,7 @@ close all
 %%
 %The N datasets contain within a test must be concatenated vertically into
 %a single dataset for training the NNs
-load('TrainingSetProcStressIndV4.mat');
+load('../Experimental Work/TrainingSetProcStressIndV4.mat');
 
 %% NNV4.0 
 %The amount of data extracted from each test is fixed for all of and 
@@ -60,9 +60,14 @@ for i=1:N
             %first)
             %rload is the raw data from experiments
             %sload is the processed and smoothed data
-            dataSize = length( PmatData.(fields.N{i}).(fields.M{j})(k).pload ); 
+            dataSize = length( PmatData.(fields.N{i}).(fields.M{j})(k).sload );
+            %Comment this bit for V5, to use the previously load value of
+            %smallest
+            smallest = round(smallest);
             rangeUnified = round( linspace(1 , dataSize, smallest ) );
-            padding = 10;
+            %Modify padding for V5
+            %No padding used as of 21/Jan/20
+            padding = 0;
             thickness = PmatData.(fields.N{i}).(fields.M{j})(k).stats.thickness;
             tempDisR = ones(1,smallest)*disR;
             tempStrainR = ones(1,smallest)*strainR;
@@ -96,13 +101,25 @@ for i=1:N
             concat_all(j).ustrain = horzcat( temp(j).strain{1} )';
             concat_all(j).ustrainR = horzcat( temp(j).strainR{1} )';
             %Training Set
-            concat_all(j).load = horzcat( temp(j).load{2:end} )';
-            concat_all(j).dis = horzcat( temp(j).dis{2:end} )';
-            concat_all(j).disR = horzcat( temp(j).disR{2:end} )';
-            concat_all(j).thickness = horzcat( temp(j).thickness{2:end} )';
-            concat_all(j).stress = horzcat( temp(j).stress{2:end} )';
-            concat_all(j).strain = horzcat( temp(j).strain{2:end} )';
-            concat_all(j).strainR = horzcat( temp(j).strainR{2:end} )';
+%             concat_all(j).load = horzcat( temp(j).load{2:end} )';
+%             concat_all(j).dis = horzcat( temp(j).dis{2:end} )';
+%             concat_all(j).disR = horzcat( temp(j).disR{2:end} )';
+%             concat_all(j).thickness = horzcat( temp(j).thickness{2:end} )';
+%             concat_all(j).stress = horzcat( temp(j).stress{2:end} )';
+%             concat_all(j).strain = horzcat( temp(j).strain{2:end} )';
+%             concat_all(j).strainR = horzcat( temp(j).strainR{2:end} )';
+            
+            % This bit of code is to recreate the V4 of this script, where
+            % all the data was compiled into a single training set. Comment
+            % this part and uncomment above for V5 if needed
+            %Horizontal concatenation
+            concat_all(j).load = horzcat( temp(j).load{:} )';
+            concat_all(j).dis = horzcat( temp(j).dis{:} )';
+            concat_all(j).disR = horzcat( temp(j).disR{:} )';
+            concat_all(j).thickness = horzcat( temp(j).thickness{:} )';
+            concat_all(j).stress = horzcat( temp(j).stress{:} )';
+            concat_all(j).strain = horzcat( temp(j).strain{:} )';
+            concat_all(j).strainR = horzcat( temp(j).strainR{:} )';
         else
             %Horizontal concatenation
             concat_all(j).load = horzcat( temp(j).load{:} )';
@@ -214,5 +231,6 @@ for i=1:N
     validationData.(fields.N{i}).output_stress = [ustress_all ustress_shift1 ustress_shift2];
 end
 %Save training data into file
-save('FormattedTrainingSetIndV4.mat','trainData','validationData');
+save('../Experimental Work/FormattedTrainingSetIndV4.mat','trainData');
+% save('../Experimental Work/FormattedTrainingSetIndV5.mat','trainData','validationData');
 disp('Done')

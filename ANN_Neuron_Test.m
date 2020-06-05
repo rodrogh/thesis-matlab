@@ -1,12 +1,10 @@
 %Script to observe the impact of increasing the number of nuerons on a
 %feedforward ANN. The matlab tables with the formatted datsets must be
 %loaded
-function ANN_Neuron_Test(fname,trainFcn,activationFcn,functionality)
+function ANN_Neuron_Test(material,fname,trainFcn,activationFcn,functionality)
 % clear all;
 close all;
 clc;
-
-%This is a test
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Initialization
@@ -95,14 +93,14 @@ switch functionality
     case 'single trainingV2'
         disp( 'Test Stage: START of Single Layer Analysis V4' );
         %Initialization
-        load('../Experimental work/FormattedTrainingSetIndV4.mat');
+        load('../Experimental work/FormattedTrainingSetIndV4-100.mat');
         %Defining number of materials
         N = length( fieldnames(trainData) ); %Value of N is valid for all cases
         %Materials NAMES: {'EPR';'FR';'NatR';'NR';'PR';'SR'}
         fields.N = fieldnames(trainData);
         T = 30; %Maximum number of neurons to test
         neuralnets = trainData;
-        for i=3
+        for i=material
             %Assigning inputs and outputs to new variables
             inputs = trainData.(fields.N{i}).input_stress;
             outputs = trainData.(fields.N{i}).output_stress*1e-6; %Convert to MPa
@@ -132,7 +130,7 @@ switch functionality
             %Output: Load
             x = [ inputs(:,1)';...
                 inputs(:,2)';...
-                outputs(:,2)'];
+                inputs(:,3)'];
             t = outputs(:,1)';
             [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
             neuralnets.(fields.N{i}).ff3 = struct('NN',NN,'performance',NNPerform);
@@ -148,40 +146,40 @@ switch functionality
             [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
             neuralnets.(fields.N{i}).ff4 = struct('NN',NN,'performance',NNPerform);
             
-            %Fifth configuration - FeedForward Single Layer
-            %Inputs: Displacement - Displacement(t-1) - DisRate
-            %Output: Load
-            x = [ inputs(:,1)';...
-                inputs(:,2)';...
-                inputs(:,4)'];
-            t = outputs(:,1)';
-            [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
-            neuralnets.(fields.N{i}).ff5 = struct('NN',NN,'performance',NNPerform);
-            
-            %Sixth configuration - FeedForward Single Layer
-            %Inputs: Displacement - Displacement(t-1) - DisRate -
-            %DisRate(t-1)
-            %Output: Load
-            x = [ inputs(:,1)';...
-                inputs(:,2)';...
-                inputs(:,4)';...
-                inputs(:,5)'];
-            t = outputs(:,1)';
-            [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
-            neuralnets.(fields.N{i}).ff6 = struct('NN',NN,'performance',NNPerform);
-            
-            %Seventh configuration - FeedForward Single Layer
-            %Inputs: Displacement - Displacement(t-1) - DisRate -
-            %DisRate(t-1) - Load(t-1)
-            %Output: Load
-            x = [ inputs(:,1)';...
-                inputs(:,2)';...
-                inputs(:,4)';...
-                inputs(:,5)';...
-                outputs(:,2)'];
-            t = outputs(:,1)';
-            [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
-            neuralnets.(fields.N{i}).ff7 = struct('NN',NN,'performance',NNPerform);
+%             %Fifth configuration - FeedForward Single Layer
+%             %Inputs: Displacement - Displacement(t-1) - DisRate
+%             %Output: Load
+%             x = [ inputs(:,1)';...
+%                 inputs(:,2)';...
+%                 inputs(:,4)'];
+%             t = outputs(:,1)';
+%             [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
+%             neuralnets.(fields.N{i}).ff5 = struct('NN',NN,'performance',NNPerform);
+%             
+%             %Sixth configuration - FeedForward Single Layer
+%             %Inputs: Displacement - Displacement(t-1) - DisRate -
+%             %DisRate(t-1)
+%             %Output: Load
+%             x = [ inputs(:,1)';...
+%                 inputs(:,2)';...
+%                 inputs(:,4)';...
+%                 inputs(:,5)'];
+%             t = outputs(:,1)';
+%             [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
+%             neuralnets.(fields.N{i}).ff6 = struct('NN',NN,'performance',NNPerform);
+%             
+%             %Seventh configuration - FeedForward Single Layer
+%             %Inputs: Displacement - Displacement(t-1) - DisRate -
+%             %DisRate(t-1) - Load(t-1)
+%             %Output: Load
+%             x = [ inputs(:,1)';...
+%                 inputs(:,2)';...
+%                 inputs(:,4)';...
+%                 inputs(:,5)';...
+%                 outputs(:,2)'];
+%             t = outputs(:,1)';
+%             [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn);
+%             neuralnets.(fields.N{i}).ff7 = struct('NN',NN,'performance',NNPerform);
         end
         disp( 'Test Stage: FINISH of Single Layer Analysis' );
         %After analysis of a single layer with T neurons, Extraction of the
@@ -195,7 +193,7 @@ switch functionality
         if saveData
             disp('Saving Data Single...')
             %             save('NN_BestV3NatR.mat','nn_best_single');
-            fileName = strcat('../Experimental work',fname,'.mat');
+            fileName = strcat('../Experimental work/',fname,'.mat');
             save(fileName,'neuralnets');
         end
     case 'multi training'
@@ -489,8 +487,7 @@ switch functionality
             save(file_name,'predictions');
         end
         %%
-    case 'getPerformance'
-        %Prediction data
+    case 'getError'
         pfile = 'KnownDisR.mat';
         load( strcat('Prediction_',pfile) );
         %Raw data
@@ -742,40 +739,84 @@ end
 function [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn,best_i)
 disp("Inside ffnn_single");
 %Variables to allocate performance data
+noSessions = 10;
 NNPerform = zeros(1,T);
-NN = cell(1,T);
-tr = cell(1,T);
-%% This is not required anymore because I am going the data from an
-%isolated test.
-% Q = size(x, 2);
-% Q1 = floor(Q * 0.90);
-% Q2 = Q - Q1;
-% ind = randperm(Q);
-% ind1 = ind(1:Q1);
-% ind2 = ind(Q1 + (1:Q2));
-% x1 = x(:, ind1);
-% t1 = t(:, ind1);
-% x2 = x(:, ind2);
-% t2 = t(:, ind2);
-%%
-for j = 1:T
+% Choose between T and a constant
+NN = cell(noSessions,1);
+tr = cell(noSessions,1);
+rng(0);
+for i = 20 %Number of neurons tested
     % Create a Fitting Network
     if nargin < 6
-        hiddenLayerSize = j; %Number of neurons
+        hiddenLayerSize = i; %Number of neurons
     else
-        hiddenLayerSize = [best_i j]; %Number of neurons
+        hiddenLayerSize = [best_i i]; %Number of neurons
     end
-    net = feedforwardnet(hiddenLayerSize,trainFcn);
-    net.layers{end}.transferFcn = activationFcn;
-    % Set up Division of Data for Training, Validation, Testing
-    %% When Using TRAINBR Data Division is not Required
-    if ~strcmp(trainFcn,'trainbr')
-        net.divideParam.trainRatio = 80/100;
-        net.divideParam.valRatio = 10/100;
-        net.divideParam.testRatio = 10/100;        
+    
+    %% Create subsets of non-verlapping areas to use in each individual training session
+    % This is an alternative to the Q method
+    c = cvpartition(length(x),'KFold',10);
+    %% Additional layer of valdiation, training the NN several times allow the
+    %measurement of its generalization capabilities
+    for j=1:noSessions
+        %% Best approach is to divide the whole dataset into training and testing
+%         %Uncomment this when not using cvpartition
+%         Q = size(x, 2);
+%         Q1 = floor(Q * 0.90); % Data division is 90-10 (train-test)
+%         Q2 = Q - Q1;
+%         ind = randperm(Q);
+%         ind1 = ind(1:Q1);
+%         ind2 = ind(Q1 + (1:Q2));
+%         x1 = x(:, ind1);
+%         t1 = t(:, ind1);
+%         x2 = x(:, ind2);
+%         t2 = t(:, ind2);
+        %Uncomment this when not using cvpartition
+        %When using cvartition, use same variables for consistency
+        x1 = x(:,training(c,j));
+        t1 = t(:,training(c,j));
+        x2 = x(:,test(c,j));
+        t2 = t(:,test(c,j));
+        %% Design
+        net = feedforwardnet(hiddenLayerSize,trainFcn);
+        net.layers{1}.transferFcn = activationFcn; %hidden layer
+        net.layers{2}.transferFcn = 'purelin'; %output layer
+        % Set up Division of Data for Training, Validation, Testing
+        %% When Using TRAINBR Data Division is not Required
+        if ~strcmp(trainFcn,'trainbr')
+            net.divideParam.trainRatio = 80/100;
+            net.divideParam.valRatio = 10/100;
+            net.divideParam.testRatio = 10/100;
+        else
+            net.divideParam.trainRatio = 90/100;
+            net.divideParam.valRatio = 0/100;
+            net.divideParam.testRatio = 10/100;
+        end
+        %% Training
+        [NN{j},tr{j}] = train(net, x1, t1);
+        y2 = NN{j}(x2); %Get NN prediction using test set
+        %Calculate mse because this was the performance function used
+        %during training
+        perfs = mse( NN{j}, t2, y2 ); %Get mse from test set
+        tr{j}.in_pred = x2; %Inputs used for prediction
+        tr{j}.pred = y2;
+        tr{j}.pred_mse = perfs;
+        %Calculate RMSE
+        varError = t2-y2; %t2 is experimental and y2 is predicted
+        sError = varError.^2;
+        msError = mean(sError);
+        rmsError = sqrt( msError);
+        nrmsError = rmsError / sqrt( mean( t2.^2 ) );
+        tr{j}.nrmsError = nrmsError;
+        %Calculate NMAD
+        aError = abs(varError);
+        maError = mean(aError);
+        nmaError = maError / mean( abs( t2 ) );
+        tr{j}.nmaError = nmaError;
+        %Calculate R^2
+        r2Coeff = 1 - sum( sError ) / sum( (t2 - mean(t2)).^2 ) ;
+        tr{j}.r2Coeff = r2Coeff;
     end
-    net.userdata = strcat('Neurons:', int2str(j));
-    [NN{j},tr{j}] = train(net, x, t);
 end
 NNPerform = tr;
 end
