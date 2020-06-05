@@ -739,7 +739,7 @@ end
 function [NN, NNPerform] = ffnn_single(x,t,T,trainFcn,activationFcn,best_i)
 disp("Inside ffnn_single");
 %Variables to allocate performance data
-noSessions = 1;
+noSessions = 10;
 NNPerform = zeros(1,T);
 % Choose between T and a constant
 NN = cell(noSessions,1);
@@ -753,20 +753,30 @@ for i = 20 %Number of neurons tested
         hiddenLayerSize = [best_i i]; %Number of neurons
     end
     
+    %% Create subsets of non-verlapping areas to use in each individual training session
+    % This is an alternative to the Q method
+    c = cvpartition(length(x),'KFold',10);
     %% Additional layer of valdiation, training the NN several times allow the
     %measurement of its generalization capabilities
     for j=1:noSessions
         %% Best approach is to divide the whole dataset into training and testing
-        Q = size(x, 2);
-        Q1 = floor(Q * 0.90); % Data division is 90-10 (train-test)
-        Q2 = Q - Q1;
-        ind = randperm(Q);
-        ind1 = ind(1:Q1);
-        ind2 = ind(Q1 + (1:Q2));
-        x1 = x(:, ind1);
-        t1 = t(:, ind1);
-        x2 = x(:, ind2);
-        t2 = t(:, ind2);
+%         %Uncomment this when not using cvpartition
+%         Q = size(x, 2);
+%         Q1 = floor(Q * 0.90); % Data division is 90-10 (train-test)
+%         Q2 = Q - Q1;
+%         ind = randperm(Q);
+%         ind1 = ind(1:Q1);
+%         ind2 = ind(Q1 + (1:Q2));
+%         x1 = x(:, ind1);
+%         t1 = t(:, ind1);
+%         x2 = x(:, ind2);
+%         t2 = t(:, ind2);
+        %Uncomment this when not using cvpartition
+        %When using cvartition, use same variables for consistency
+        x1 = x(:,training(c,j));
+        t1 = t(:,training(c,j));
+        x2 = x(:,test(c,j));
+        t2 = t(:,test(c,j));
         %% Design
         net = feedforwardnet(hiddenLayerSize,trainFcn);
         net.layers{1}.transferFcn = activationFcn; %hidden layer
