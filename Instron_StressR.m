@@ -110,7 +110,8 @@ thao = zeros(N,6);
 Eo = zeros(N,1);
 %Create gof variable and fill it with nan to avoid zero values in the
 %min calculation
-gofSR = nan(N,20);
+Branches = 10;
+gofSR = nan(N,Branches);
 
 for i=1:N
     fields.M = fieldnames( PmatData.(fields.N{i}) );
@@ -132,7 +133,7 @@ for i=1:N
         %Applying formula deducted from exponential decaying curve
         loadSLS = EoSLS(i)*(kSLS(i,1) + kSLS(i,2)*(1./exp(time./thaoSLS(i))));
 %         loadSLS2 = EoSLS2(i)*(kSLS2(i,1) + kSLS2(i,2)*(1./exp(time./thaoSLS2(i))));
-        gofSLS(i) = 100*(1/mean(load))*sqrt(mean(power(load-loadSLS,2)));
+        gofSLS(i) = sqrt( mean( (load-loadSLS).^2) );
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %Wiechert model fit with 2 branches
         %     [kW(i,:), etaW(i,:), thaoW(i,:), EoW(i,:)] = wiechertExp2StressRel(stress,Eo(i),time);
@@ -143,89 +144,82 @@ for i=1:N
         %     gofW2(i) = 100*(1/mean(load))*sqrt(mean(power(load-stressW2,2)));
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %Wiechert model fit with optimized  N branches
-        
+        %Define k as a cell matrix of NxM dimension which holds a structure
+        %araay with all the branches tested
+        tempCell = cell(N,M);
+        fitOpt = struct([]); %Fit Optimization structure
+        stressRel = zeros(Branches,length(time));
+        gofSR = zeros(1,Branches);
         %This for loop was designed to test the effect of the quantity of
         %branches iteratively. If the fit of a particular single value of
         %branches is desired, the for loop can be bipassed making it "for
-        %branches=Branches(i):Branches(i)".
-        %Branches(i) = parameters(i).branches;
-        Branches(i) = 10;
-        %branches = 1;
-        for branches=1:Branches(i)
-                    %clear k eta thao Eo
-                    [k(i,1:branches+1),eta(i,1:branches),thao(i,1:branches),Eo(i)] = wiechertStressRel(load,Eo(i),time,branches,1);
-                    %Calculate fit and compare with actual value
-                    %The contribution of all parallel branches is
-                    stressBranch = zeros(branches,length(time));
-                    stressSum = 0;
-                    for J=1:branches
-                        stressBranch(J,:) = k(i,J+1).*(1./exp(time/thao(i,J)));
-                        stressSum = stressSum + stressBranch(J,:);
+        %branches=1".        
+        for branches=1:Branches
+                    [fitOpt(branches).k,fitOpt(branches).eta,fitOpt(branches).thao,Eo(i)] = ...
+                        wiechertStressRel(load,Eo(i),time,branches,1);
+                    %This variable changes in every iteration
+                    tempk = fitOpt(branches).k; %1xbranches+1 vector
+                    tempThao = fitOpt(branches).thao; %1xbranches vector
+                    %The stress(t) = k0*Eo + SUMoF_j_To_branches kj*exp(-t/thaoj)
+                    for test=1:length(time)
+                       stressRel(branches,test) =  Eo(i)*tempk(1) + ... %Equilibrium Spring Stiffness
+                           Eo(i)*sum( ...
+                           tempk(2:end)./exp(time(test)./tempThao)... %This operation results in a 1xbranches vector
+                           ); 
                     end
-                    stressWiechert = Eo(i)*(k(i,1) + stressSum);
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %Compare mathematical model with experimental data and exponential fit
-                    gofSR(i,branches) = 100*(1/mean(load))*sqrt(mean(power(load-stressWiechert,2)));
-                    %optimal number of branches
-                    [minSR,indexSR] = min(gofSR,[],2);
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %         figure(figStress)
-%             figure
-%             colors = get(gca,'ColorOrder');
-%             %         subplot(2,3,i);
-%             plot(time/60,load*1e-6,'Color',colors(6,:),...
-%                 'DisplayName','Experimental Data');
-% %             semilogx(time,load,'Color',colors(6,:));
-%             hold on
-% %             semilogx(time,loadSLS,':','Color',colors(4,:));
-%             plot(time/60,loadSLS*1e-6,':','Color',colors(4,:),...
-%                 'DisplayName','SLS Fit');
-% %             plot(time/60,loadSLS2,'--','Color',colors(2,:));
-%             plot(time/60,stressWiechert*1e-6,'--','Color',colors(7,:),...
-%                 'DisplayName','Wiechert Fit');
-%             %         plot(time/60,stressW2*1e-6);
-%             hold off
-%             %         legend('Data','SLS Fit','Wiechert Fit N','Wiechert Fit 2');
-%             legend('Location','northeast','Interpreter','latex');
-%             %             legend('Data','SLS Fit');
-%             %         sTitle = strcat(parameters(i).name,'');
-%             sTitle = strcat("Stress Relaxation Fit - ",fields.N{i});
-%             title(sTitle,'Interpreter','latex');
-%             xlabel('Time (minutes)');
-%             ylabel('Stress (MPa)');
-%             %grid on;
-%             ax = gca; % current axes
-%             ax.Box = 'off';
-%             ax.XMinorTick = 'on';
-%             ax.YMinorTick = 'on';
-%             ax.XGrid = 'on';
-%             ax.YGrid = 'on';
-%             ax.TickLength = [0.02 0.025];
-%             ax.XLim = [0 180];
-            %ax.YLim = [0 1.1];
+                    gofSR(branches) = sqrt( mean( (load-stressRel(branches,:)).^2) );
         end
+        % Calculate optimal number of branches for wiechert model        
+        [minSR,indexSR] = min(gofSR,[],2);
+        bestStress = stressRel(indexSR,:);
+        bestBranches = indexSR;
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         figure
+%         colors = get(gca,'ColorOrder');
+%         %         subplot(2,3,i);
+%         plot(time,load,'Color',colors(6,:),...
+%             'DisplayName','Experimental Data');
+%         hold on
+%         plot(time,bestStress,'--','Color',colors(7,:),...
+%             'DisplayName','Wiechert Fit');
+%         hold off
+%         legend('Location','northeast','Interpreter','latex');
+%         sTitle = strcat("Stress Relaxation Fit - ",fields.N{i}," - ", fields.M{j}," - ",num2str(indexSR));
+%         title(sTitle,'Interpreter','latex');
+%         xlabel('Time (minutes)');
+%         ylabel('Stress (MPa)');
+%         %grid on;
+%         ax = gca; % current axes
+%         ax.Box = 'off';
+%         ax.XMinorTick = 'on';
+%         ax.YMinorTick = 'on';
+%         ax.XGrid = 'on';
+%         ax.YGrid = 'on';
+%         ax.TickLength = [0.02 0.025];
+% %         ax.XLim = [0 180];
+% %         ax.YLim = [0 1.1];
+        
         %Structure to save fitted data for the all the different
         %experimental setups
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.k = kSLS(i,:);
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.thao = thaoSLS(i);
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.eta = etaSLS(i);
         fitParameters.( fields.N{i} ).( fields.M{j} ).SLS.Eo = Eo(i);
-        fitParameters.( fields.N{i} ).( fields.M{j} ).W.k = k(i,:);
-        fitParameters.( fields.N{i} ).( fields.M{j} ).W.thao = thao(i);
-        fitParameters.( fields.N{i} ).( fields.M{j} ).W.eta = eta(i);
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.k = fitOpt(indexSR).k;
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.thao = fitOpt(indexSR).thao;
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.eta = fitOpt(indexSR).eta;
+        fitParameters.( fields.N{i} ).( fields.M{j} ).W.bestBranches = indexSR;
         fitParameters.( fields.N{i} ).( fields.M{j} ).W.Eo = Eo(i);
     end
 end
 
 % Save Wiechert model fit
-% save('FitDataSRLow.mat','Branches','eta','k','thao','Eo','kSLS', 'etaSLS', 'thaoSLS', 'EoSLS',...
-%     'kW','etaW','thaoW','EoW','gofSR','indexSR','minSR');
-% save('FitRawDataSRLow.mat','Branches','eta','k','thao','Eo','kSLS', 'etaSLS', 'thaoSLS', 'EoSLS',...
-%     'kW','etaW','thaoW','EoW','gofSR','indexSR','minSR');
 if method == 0
-    save('../Experimental Work/SRelFitParametersV4.mat','fitParameters');
+    save('../Experimental Work/SRelFitParametersV5.mat','fitParameters');
 else
-    save('../Experimental Work/SRelFitParametersIndV4.mat','fitParameters');
+    save('../Experimental Work/SRelFitParametersIndV5.mat','fitParameters');
 end
 % save('readInstronDataSR.mat','expData');
 % save('readInstronRawDataSR.mat','expData');
@@ -238,70 +232,45 @@ function [k,eta,thao,Eo] = wiechertStressRel(stress,Eo,time,N,parameters)
 %of the time vector. Need to find the point in time where the first decade
 %starts and where the third decades end. Between this range we want to
 %logspace our points of interest
+%Convert time to logarithmic scale
 timeLog = log10(time);
-temp = find (timeLog > 1);
-tstart = timeLog(temp(1));
-temp = find (timeLog < 4);
-tend = timeLog(temp(end));
-clear temp;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% temp = logspace(log10(time(1)),log10(time(end-3)),N+1);
-temp = logspace(tstart,tend,N+1);
-points = ones(1,length(temp));
-for n=2:length(temp)
-    range = find(time < temp(n));
-    points(n) = range(end);
-end
-time_i = time(points);
-stress_i = stress(points);
-thao = time_i(2:end);
-%Assume that for every point in time, there is a time constant thao which
-%describes the ith Maxwell branch
-%Obtain matrix of form: A*k = B
-% A = ones(N+1,N+1);
-% B = ones(N+1,1);
-% %Matrix A must have ones in the first column and row
-% %Vector B must have one in the first element
-% B(1) = stress_i(1)/Eo;
-% %Therefore, the for loop does not pass through this places
-% for i=2:N+1
-%     B(i,1) = stress_i(i)/Eo;
-%     for j=2:N+1
-%         A(i,j) = 1./exp(thao(i-1)/thao(j-1));
-%     end
-% end
-%Alternative method - Enginnering viscoelasticity
-%Equation system only solve the variables of the branches
-A2 = zeros(N,N);
-B2 = zeros(N,1);
-ke = stress(end)/Eo;
+%Create a linearly spaced sampling vector. Discarding first and last
+%datapoints because they can't be used as time constants
+%Start from timeLog(2), instead of timeLog(1)
+%End at timeLog(end-1), instead of timeLog(end)
+timeLog_LinScale = linspace(timeLog(2),timeLog(end-1),N);
+indexOfTimeCollocation = zeros(1,N);
 for i=1:N
-    B2(i,1) = stress_i(i+1)/Eo - ke;
-    for j=1:N
-        A2(i,j) = 1./exp(thao(i)/thao(j));
+    indexes = find( timeLog >= timeLog_LinScale(i));
+    indexOfTimeCollocation(i) = indexes(1);
+end
+%Extract N time constants
+thao = time(indexOfTimeCollocation); %1xN vector
+stressCollocation = stress(indexOfTimeCollocation);
+%Obtain the Relaxation Modulus E(t) = sigma(t)/Eo; inclluding t=0.
+%This will result in a 1x(N+1) vector
+E = [stress(1)/Eo stressCollocation/Eo]'; %Nx1 vector
+%% Time Collocation approach by C. Machiraju
+%At t=0 the sum of all k values is equal to E(t=0)
+%This equation is useful for the calculation and is in addition to the N
+%time constants desired to collocate.
+%Therefore the equation system to create has N+1 equations, as follows:
+%Define system of equations relating each time constant to a known
+%relaxation modulus (E)
+A = ones(N+1,N+1);
+%The equation is solved by doing A*k = E; -> k=inv(A)*E;
+%Start from [2,2] to [N+1,N+1]
+for i=2:N+1
+    for j=2:N+1
+        A(i,j) = 1./exp(thao(i-1)/thao(j-1));
     end
 end
-%Choose which method to use
-%Solve equation system by finding k = inv(A)*B
-%%%%%%%%%%%
-% k = A\B;
-%%%%%%%%%%%
-k = A2\B2;
-k(1) = stress(1)/Eo - ke - sum(k(2:end));
-k = [ke ; k];
-%%%%%%%%%%%
+%Solve
+k = A\E;
 %Obtain viscous coefficients
-eta = thao.*k(2:end)';
-%obtain the transpose of all variables to match calling function
-temp = k';
-clear k
-k = temp;
-temp = eta';
-clear eta
-eta = temp;
-temp = thao';
-clear thao
-thao = temp;
+eta = thao.*(k(2:end)');
+%Obtain the transpose of all variables to match calling function
+k = k';
 % figure
 % semilogx(time_i,stress_i*1e-6,'o');
 % legend('Collocation Log');
